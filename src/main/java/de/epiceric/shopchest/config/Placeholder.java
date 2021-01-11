@@ -11,6 +11,7 @@ public enum Placeholder {
     MIN_PRICE("%MIN-PRICE%"),
     MAX_PRICE("%MAX-PRICE%"),
     VERSION("%VERSION%"),
+    TAX_PERCENT("%TAX_PERCENT%"),
     BUY_PRICE("%BUY-PRICE%"),
     SELL_PRICE("%SELL-PRICE%"),
     LIMIT("%LIMIT%"),

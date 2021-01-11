@@ -1,6 +1,7 @@
 package de.epiceric.shopchest.language;
 
 public enum Message {
+    GENERIC_SHOP_CREATED,
     SHOP_CREATED,
     ADMIN_SHOP_CREATED,
     CHEST_ALREADY_SHOP,

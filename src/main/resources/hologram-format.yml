@@ -76,3 +76,11 @@ lines:
         format: "Sell %SELL-PRICE%"
         requirements:
           - SELL_PRICE > 0
+  3:
+    options:
+      default:
+        format: "&oprices include %TAX_PERCENT%% tax"
+        requirements:
+          - NORMAL_SHOP
+          - TAX_PERCENT > 0
+          - TAX_PERCENT < 100

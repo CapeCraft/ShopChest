@@ -18,6 +18,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import de.epiceric.shopchest.ShopChest;
@@ -143,8 +144,10 @@ public class Shop {
 
             // Update shops for players in the same world after creation has finished
             plugin.getUpdater().queue(() -> {
-                for (Player player : location.getWorld().getPlayers()) {
-                    plugin.getShopUtils().resetPlayerLocation(player);
+                if(location.getWorld() != null) {
+                    for (Player player : location.getWorld().getPlayers()) {
+                        plugin.getShopUtils().resetPlayerLocation(player);
+                    }
                 }
             });
             plugin.getUpdater().updateShops(location.getWorld());
@@ -176,7 +179,7 @@ public class Shop {
 
     /**
      * <p>Creates the floating item of the shop</p>
-     * <b>Call this after {@link #createHologram()}, because it depends on the hologram's location</b>
+     * <b>Call this after {@link #createHologram(PreCreateResult)}, because it depends on the hologram's location</b>
      */
     private void createItem() {
         plugin.debug("Creating item (#" + id + ")");
@@ -212,17 +215,20 @@ public class Shop {
             chests[0] = (Chest) ih;
         }
 
-        if (Utils.getMajorVersion() < 13) {
-            face = ((org.bukkit.material.Directional) chests[0].getData()).getFacing();
-        } else {
-            face = ((Directional) chests[0].getBlockData()).getFacing();
+        face = BlockFace.NORTH;
+        if(chests[0] != null) {
+            if (Utils.getMajorVersion() < 13) {
+                face = ((org.bukkit.material.Directional) chests[0].getData()).getFacing();
+            } else {
+                face = ((Directional) chests[0].getBlockData()).getFacing();
+            }
         }
 
         return new PreCreateResult(ih.getInventory(), chests, face);
     }
 
     /**
-     * Acuatlly creates the hologram (async)
+     * Actually creates the hologram (async)
      */
     private void createHologram(PreCreateResult preResult) {
         String[] holoText = getHologramText(preResult.inventory);
@@ -259,15 +265,30 @@ public class Shop {
         List<String> lines = new ArrayList<>();
 
         ItemStack itemStack = getProduct().getItemStack();
+        Damageable itemDamage = (Damageable) itemStack.getItemMeta();
 
         Map<HologramFormat.Requirement, Object> requirements = new EnumMap<>(HologramFormat.Requirement.class);
         requirements.put(HologramFormat.Requirement.VENDOR, getVendor().getName());
         requirements.put(HologramFormat.Requirement.AMOUNT, getProduct().getAmount());
-        requirements.put(HologramFormat.Requirement.ITEM_TYPE, itemStack.getType() + (itemStack.getDurability() > 0 ? ":" + itemStack.getDurability() : ""));
-        requirements.put(HologramFormat.Requirement.ITEM_NAME, itemStack.hasItemMeta() ? itemStack.getItemMeta().getDisplayName() : null);
+
+        if(itemDamage != null) {
+            requirements.put(HologramFormat.Requirement.ITEM_TYPE, itemStack.getType() + (itemDamage.hasDamage() ? ":" + itemDamage.getDamage() : ""));
+            requirements.put(HologramFormat.Requirement.DURABILITY, itemDamage.getDamage());
+        } else {
+            requirements.put(HologramFormat.Requirement.ITEM_TYPE, itemStack.getType());
+            requirements.put(HologramFormat.Requirement.DURABILITY, 0);
+        }
+
+        if(itemStack.getItemMeta() != null) {
+            requirements.put(HologramFormat.Requirement.ITEM_NAME, itemStack.getItemMeta().getDisplayName());
+        } else {
+            requirements.put(HologramFormat.Requirement.ITEM_NAME, null);
+        }
+
         requirements.put(HologramFormat.Requirement.HAS_ENCHANTMENT, !LanguageUtils.getEnchantmentString(ItemUtils.getEnchantments(itemStack)).isEmpty());
         requirements.put(HologramFormat.Requirement.BUY_PRICE, getBuyPrice());
         requirements.put(HologramFormat.Requirement.SELL_PRICE, getSellPrice());
+        requirements.put(HologramFormat.Requirement.TAX_PERCENT, Config.taxPercent);
         requirements.put(HologramFormat.Requirement.HAS_POTION_EFFECT, ItemUtils.getPotionEffect(itemStack) != null);
         requirements.put(HologramFormat.Requirement.IS_MUSIC_DISC, itemStack.getType().isRecord());
         requirements.put(HologramFormat.Requirement.IS_POTION_EXTENDED, ItemUtils.isExtendedPotion(itemStack));
@@ -278,15 +299,15 @@ public class Shop {
         requirements.put(HologramFormat.Requirement.IN_STOCK, Utils.getAmount(inventory, itemStack));
         requirements.put(HologramFormat.Requirement.MAX_STACK, itemStack.getMaxStackSize());
         requirements.put(HologramFormat.Requirement.CHEST_SPACE, Utils.getFreeSpaceForItem(inventory, itemStack));
-        requirements.put(HologramFormat.Requirement.DURABILITY, itemStack.getDurability());
 
         Map<Placeholder, Object> placeholders = new EnumMap<>(Placeholder.class);
         placeholders.put(Placeholder.VENDOR, getVendor().getName());
         placeholders.put(Placeholder.AMOUNT, getProduct().getAmount());
         placeholders.put(Placeholder.ITEM_NAME, getProduct().getLocalizedName());
         placeholders.put(Placeholder.ENCHANTMENT, LanguageUtils.getEnchantmentString(ItemUtils.getEnchantments(itemStack)));
-        placeholders.put(Placeholder.BUY_PRICE, getBuyPrice());
-        placeholders.put(Placeholder.SELL_PRICE, getSellPrice());
+        placeholders.put(Placeholder.BUY_PRICE, getBuyPriceWithTax());
+        placeholders.put(Placeholder.SELL_PRICE, getSellPriceWithTax());
+        placeholders.put(Placeholder.TAX_PERCENT, Config.taxPercent);
         placeholders.put(Placeholder.POTION_EFFECT, LanguageUtils.getPotionEffectName(itemStack));
         placeholders.put(Placeholder.MUSIC_TITLE, LanguageUtils.getMusicDiscName(itemStack.getType()));
         placeholders.put(Placeholder.BANNER_PATTERN_NAME, LanguageUtils.getBannerPatternName(itemStack.getType()));
@@ -294,7 +315,12 @@ public class Shop {
         placeholders.put(Placeholder.STOCK, Utils.getAmount(inventory, itemStack));
         placeholders.put(Placeholder.MAX_STACK, itemStack.getMaxStackSize());
         placeholders.put(Placeholder.CHEST_SPACE, Utils.getFreeSpaceForItem(inventory, itemStack));
-        placeholders.put(Placeholder.DURABILITY, itemStack.getDurability());
+
+        if(itemDamage != null) {
+            placeholders.put(Placeholder.DURABILITY, itemDamage.getDamage());
+        } else {
+            placeholders.put(Placeholder.DURABILITY, 0);
+        }
 
         int lineCount = plugin.getHologramFormat().getLineCount();
 
@@ -305,10 +331,10 @@ public class Shop {
 
                 switch (placeholder) {
                     case BUY_PRICE:
-                        replace = plugin.getEconomy().format(getBuyPrice());
+                        replace = plugin.getEconomy().format(getBuyPriceWithTax());
                         break;
                     case SELL_PRICE:
-                        replace = plugin.getEconomy().format(getSellPrice());
+                        replace = plugin.getEconomy().format(getSellPriceWithTax());
                         break;
                     default:
                         replace = String.valueOf(placeholders.get(placeholder));
@@ -432,6 +458,28 @@ public class Shop {
      */
     public double getSellPrice() {
         return sellPrice;
+    }
+
+    /**
+     * @return The buy price with the tax percent
+     */
+    public double getBuyPriceWithTax() {
+        if(getShopType() == ShopType.ADMIN) {
+            return buyPrice;
+        } else {
+            return buyPrice + ((buyPrice / 100) * Config.taxPercent);
+        }
+    }
+
+    /**
+     * @return The sell price with the tax percent
+     */
+    public double getSellPriceWithTax() {
+        if(getShopType() == ShopType.ADMIN) {
+            return sellPrice;
+        } else {
+            return sellPrice - ((sellPrice / 100) * Config.taxPercent);
+        }
     }
 
     /**

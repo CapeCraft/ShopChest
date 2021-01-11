@@ -1,3 +1,6 @@
+# Generic Shop Created Message
+message.generic-shop-created=&6Shop created.
+
 # Set the message when a shop is created at the clicked chest.
 # Usable Placeholders: %CREATION-PRICE%
 message.shop-created=&6You were withdrawn &c%CREATION-PRICE% &6to create this shop.

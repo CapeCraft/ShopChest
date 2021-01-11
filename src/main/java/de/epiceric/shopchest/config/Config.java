@@ -102,6 +102,14 @@ public class Config {
     public static int databaseMySqlPingInterval;
 
     /**
+     * <p>The tax to add to an item</p>
+     * If this value is 0 not tax is added to an item. If it's anything but 0 (up to 100) it will add that perectage of TAX to a purchase.
+     * ArmorStands will show "$1000 + x% TAX" so a value of 10 would show "$1000 + 10% TAX". This means the player would pay $1100 and
+     * the seller would receive $1000. This allows an economy sink on the server
+     */
+    public static int taxPercent;
+
+    /**
      * <p>The minimum prices for certain items</p>
      * This returns a key set, which contains e.g "STONE", "STONE:1", of the <i>minimum-prices</i> section in ShopChest's config.
      * To actually retrieve the minimum price for an item, you have to get the double {@code minimum-prices.<key>}.
@@ -466,6 +474,7 @@ public class Config {
         databaseMySqlPassword = plugin.getConfig().getString("database.mysql.password");
         databaseTablePrefix = plugin.getConfig().getString("database.table-prefix");
         databaseType = Database.DatabaseType.valueOf(plugin.getConfig().getString("database.type"));
+        taxPercent = plugin.getConfig().getInt("tax-percent");
         minimumPrices = (plugin.getConfig().getConfigurationSection("minimum-prices") == null) ? new HashSet<String>() : plugin.getConfig().getConfigurationSection("minimum-prices").getKeys(true);
         maximumPrices = (plugin.getConfig().getConfigurationSection("maximum-prices") == null) ? new HashSet<String>() : plugin.getConfig().getConfigurationSection("maximum-prices").getKeys(true);
         allowDecimalsInPrice = plugin.getConfig().getBoolean("allow-decimals-in-price");

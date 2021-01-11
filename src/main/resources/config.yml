@@ -126,6 +126,10 @@ maximal-item-distance: 40
 # Set whether the buy price must be greater than or equal to the sell price.
 buy-greater-or-equal-sell: true
 
+# Percentage to add as a TAX. This will also change armour stands to show the amount + TAX. For example
+# "1000 + 10% TAX". If number is 0 this is disabled. TAX percent should be between 1 and 99.
+tax-percent: 0
+
 # Set the minimum and maximum prices for each individual item.
 minimum-prices:
 # "DIAMOND": 0.5
